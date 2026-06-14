@@ -241,8 +241,8 @@ function Set-SelectedGuideButtonStyle {
   )
 
   if ($Active) {
-    $Button.Background = "#0F1E3A"
-    $Button.BorderBrush = "#3B82F6"
+    $Button.Background = "#123B7A"
+    $Button.BorderBrush = "#60A5FA"
   } elseif ($Selected) {
     $Button.Background = "#120D1D"
     $Button.BorderBrush = "#34254F"
@@ -615,6 +615,9 @@ function Start-Widget {
   $activeFlowState = [pscustomobject]@{
     Value = ""
   }
+  $lastFocusedFlowKey = [pscustomobject]@{
+    Value = ""
+  }
   $detailState = [pscustomobject]@{
     CurrentItem = $null
   }
@@ -628,8 +631,8 @@ function Start-Widget {
       Set-SelectedGuideButtonStyle -Button $guideButton -Selected $isSelected -Active $isActive
 
       if ($isActive) {
-        $view.Badge.Background = "#0F1E3A"
-        $view.Badge.BorderBrush = "#3B82F6"
+        $view.Badge.Background = "#1D4ED8"
+        $view.Badge.BorderBrush = "#93C5FD"
         $view.BadgeText.Foreground = "#DBEAFE"
         $view.Activity.Visibility = "Visible"
       } else {
@@ -637,6 +640,25 @@ function Start-Widget {
         $view.Badge.BorderBrush = "#3A2A56"
         $view.BadgeText.Foreground = "#B8A7DC"
         $view.Activity.Visibility = "Collapsed"
+      }
+    }
+  }
+
+  function Focus-ActiveFlow {
+    param([string]$Flow)
+
+    $flowKey = Get-FlowKey -Value $Flow
+    if ([string]::IsNullOrWhiteSpace($flowKey) -or $lastFocusedFlowKey.Value -eq $flowKey) {
+      return
+    }
+
+    foreach ($view in $guideButtonViews) {
+      if ((Get-FlowKey -Value ([string]$view.Item.flow)) -eq $flowKey) {
+        $lastFocusedFlowKey.Value = $flowKey
+        $selectedGuideButton.Value = $view.Button
+        Show-ItemDetail -Item $view.Item
+        $view.Button.BringIntoView()
+        return
       }
     }
   }
@@ -766,14 +788,14 @@ function Start-Widget {
     $line.Children.Add($flowText) | Out-Null
 
     $activity = New-Object System.Windows.Controls.Border
-    $activity.Background = "#0F1E3A"
-    $activity.BorderBrush = "#3B82F6"
+    $activity.Background = "#1D4ED8"
+    $activity.BorderBrush = "#93C5FD"
     $activity.BorderThickness = "1"
     $activity.CornerRadius = "6"
     $activity.Padding = "7,1,7,2"
     $activity.Margin = "8,0,0,0"
     $activity.Visibility = "Collapsed"
-    $activity.Child = New-TextBlock -Text "..." -FontSize 12 -Weight "Bold" -Color "#DBEAFE"
+    $activity.Child = New-TextBlock -Text "현재" -FontSize 12 -Weight "Bold" -Color "#DBEAFE"
     [System.Windows.Controls.Grid]::SetColumn($activity, 2)
     $line.Children.Add($activity) | Out-Null
 
@@ -820,12 +842,18 @@ function Start-Widget {
           $blocked = " / 금지: " + (($connection.State.blockedActions | ForEach-Object { [string]$_ }) -join ", ")
         }
         $displayFlow = Get-DisplayFlowName -Value ([string]$connection.State.currentFlow) -Buttons $guideButtons
+        $activeSkill = [string]$connection.State.activeSkill
+        $activeSkillDetail = ""
+        if (-not [string]::IsNullOrWhiteSpace($activeSkill) -and ((Get-FlowKey -Value $activeSkill) -ne (Get-FlowKey -Value ([string]$connection.State.currentFlow)))) {
+          $activeSkillDetail = " / 보조 활동: $activeSkill"
+        }
         $currentFlowText.Text = "Flow: $displayFlow"
         $nextFlowText.Text = "Next: $($connection.State.nextSkill)"
         $activeFlowState.Value = [string]$connection.State.currentFlow
         Update-GuideButtonStates
+        Focus-ActiveFlow -Flow ([string]$connection.State.currentFlow)
         $flowStatusPanel.Visibility = "Visible"
-        $statusDetail.Text = "상태: $($connection.State.status)$blocked"
+        $statusDetail.Text = "상태: $($connection.State.status)$activeSkillDetail$blocked"
       } elseif ($connection.LinkRequest) {
         $activeFlowState.Value = ""
         Update-GuideButtonStates
