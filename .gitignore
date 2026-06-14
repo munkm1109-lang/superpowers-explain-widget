@@ -2,3 +2,5 @@
 .superpowers-widget/state.json
 .superpowers-widget/runtime/
 .superpowers/
+web/node_modules/
+web/.env
