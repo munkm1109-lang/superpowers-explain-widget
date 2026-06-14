@@ -17,6 +17,13 @@ test("readJsonFile returns null for missing optional files", async () => {
   assert.equal(await readJsonFile(path.join(dir, "missing.json")), null);
 });
 
+test("readJsonFile accepts UTF-8 BOM JSON files written by Windows tools", async () => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), "sp-json-"));
+  const file = path.join(dir, "bom.json");
+  await fs.writeFile(file, "\uFEFF{\"ok\":true}", "utf8");
+  assert.deepEqual(await readJsonFile(file), { ok: true });
+});
+
 test("readJsonFile throws clear error for invalid JSON", async () => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), "sp-json-"));
   const file = path.join(dir, "bad.json");
