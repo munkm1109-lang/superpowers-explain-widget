@@ -93,6 +93,7 @@ The MVP should match the current Windows widget's user-facing behavior as closel
 - Copy the full connect prompt, not just the widget ID.
 - Poll local state every few seconds.
 - Avoid any AI or token-consuming work inside the widget.
+- Support optional local error reporting hooks for troubleshooting, with Sentry integration disabled unless the user explicitly configures it.
 
 Out of scope for MVP:
 
@@ -103,6 +104,7 @@ Out of scope for MVP:
 - Tray integration.
 - Multiple visual themes.
 - Direct Codex API integration.
+- Mandatory telemetry or always-on remote error reporting.
 
 ## Shared Data and Runtime Files
 
@@ -213,6 +215,32 @@ The Node server should expose a small local-only API:
 
 The server should bind to localhost by default. It should not expose the local runtime files over the network.
 
+## Observability and Sentry
+
+The web widget should include a small observability design, but it must not make remote telemetry mandatory.
+
+Default behavior:
+
+- Log server errors to the local console.
+- Return simple user-facing error states in the UI.
+- Avoid sending runtime file paths, prompt text, workspace paths, or widget IDs to any remote service by default.
+
+Optional Sentry behavior:
+
+- Sentry may be added as an opt-in troubleshooting layer for users who explicitly configure a DSN.
+- Sentry should be disabled when no DSN is configured.
+- Any captured error should scrub local paths, `connectPrompt`, `statePath`, `linkRequestPath`, widget IDs, and workspace names before leaving the machine.
+- The UI should not require a Sentry account to run.
+- Tests should pass with Sentry disabled.
+
+Design scaffold:
+
+```powershell
+npx getdesign@latest add sentry
+```
+
+Use this command as a design-guidance scaffold before implementation. The command should be verified during implementation planning because `getdesign` is a template CLI, not the Sentry SDK installer itself. Actual Sentry SDK setup should be done only after the plan defines which package is needed for the chosen Node/browser stack.
+
 ## UI Design
 
 The web UI should preserve the current widget's information hierarchy:
@@ -238,6 +266,7 @@ The widget should handle:
 - Mismatched link ID.
 - Registry entry not found.
 - Port already in use.
+- Optional Sentry configuration missing or invalid.
 
 The user-facing language should stay simple:
 
@@ -261,6 +290,8 @@ Minimum verification for implementation:
 - Two different widget IDs can hold separate link/state files at the same time.
 - Legacy `state.json` / `link-request.json` behavior remains readable for the Windows widget.
 - Browser UI renders flow list and current status.
+- Server and UI still work when Sentry is not configured.
+- If Sentry is configured, test that sensitive local fields are scrubbed before capture.
 
 ## Open Decisions Resolved
 
@@ -271,3 +302,4 @@ Minimum verification for implementation:
 - Runtime state: widget ID-specific files under `.superpowers-widget/runtime/`.
 - Compatibility: Windows widget moves to the new runtime structure while retaining legacy read compatibility.
 - Documentation: specs live in `docs/spec`, plans live in `docs/plan`.
+- Observability: Sentry is optional, disabled by default, and should be scaffolded through `npx getdesign@latest add sentry` only as design guidance before SDK installation is planned.
