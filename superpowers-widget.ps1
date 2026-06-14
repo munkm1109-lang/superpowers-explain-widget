@@ -280,10 +280,9 @@ function Get-ConnectionStatus {
   }
 
   $sameLink = [string]$state.linkId -eq [string]$linkRequest.linkId
-  $sameWorkspace = [string]$state.workspacePath -eq [string]$linkRequest.workspacePath
   $fresh = Test-IsFreshState -State $state
 
-  if ($sameLink -and $sameWorkspace -and $fresh) {
+  if ($sameLink -and $fresh) {
     return [pscustomobject]@{
       Mode = "Linked"
       Title = "연결됨"
