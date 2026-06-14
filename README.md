@@ -2,6 +2,14 @@
 
 Windows에서 더블클릭으로 여는 Superpowers 흐름 안내 위젯입니다. 위젯은 로컬 JSON 파일만 읽고 쓰며, Codex나 AI 모델을 직접 호출하지 않습니다.
 
+## 반드시 먼저 설치해야 하는 것
+
+이 위젯은 **Codex Superpowers 플러그인이 설치되어 있고, Codex에서 Superpowers skill을 사용할 수 있는 상태**를 전제로 합니다.
+
+Superpowers 플러그인이 없으면 위젯 창은 열릴 수 있지만, Codex가 현재 flow를 이해하거나 `Brainstorming`, `Executing Plans`, `Requesting Code Review` 같은 Superpowers 흐름에 맞춰 위젯을 제대로 업데이트할 수 없습니다.
+
+따라서 처음 설치하는 사람은 아래 위젯 설치를 하기 전에 먼저 Codex에서 Superpowers 플러그인을 설치하고 활성화해 주세요.
+
 ## 설치
 
 Windows에서 PowerShell과 Git이 설치되어 있으면 바로 사용할 수 있습니다.
