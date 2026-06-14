@@ -3,12 +3,12 @@
   "sessionId": "manual-example-session",
   "sessionLabel": "Example Codex session",
   "workspacePath": "C:\\Users\\munkm\\OneDrive\\Documents\\New project",
-  "currentFlow": "executing-plans",
-  "activeSkill": "brainstorming",
-  "status": "전체 작업은 실행 단계이고, 부분 문제만 Brainstorming으로 정리 중",
-  "nextSkill": "requesting-code-review",
-  "recommendedAction": "Requesting Code Review라고 요청해서 리뷰 flow로 전환합니다.",
-  "recommendedReason": "구현과 확인이 끝난 뒤에는 바로 다음 기능을 만들기보다 변경사항을 리뷰 관점으로 점검해야 누락된 결함을 줄일 수 있습니다.",
+  "currentFlow": "requesting-code-review",
+  "activeSkill": "verification",
+  "status": "코드 리뷰 수정과 확인이 끝난 상태",
+  "nextSkill": "finishing-a-development-branch",
+  "recommendedAction": "Finishing a Development Branch로 넘어가서 최종 상태를 정리합니다.",
+  "recommendedReason": "리뷰 수정과 확인이 끝났다면 작업을 열어둔 채 멈추기보다 최종 검증, 커밋 상태, 남은 위험을 정리해야 안전하게 마무리할 수 있습니다.",
   "blockedActions": [
     "보조 skill 호출만으로 전체 currentFlow를 바꾸지 않습니다."
   ],

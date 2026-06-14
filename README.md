@@ -25,6 +25,8 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\superpowers-widget.ps1
 
 상세 패널의 `지금 할 일`은 활성 flow의 `recommendedAction`을 우선 표시합니다. `이유`도 활성 flow에서는 `recommendedReason`을 우선 표시하므로, Codex가 다음 행동과 그 이유를 함께 실시간으로 갱신할 수 있습니다.
 
+현재 flow의 작업과 확인이 끝났다면, Codex는 먼저 `recommendedAction`에 다음 flow 전환 제안을 적습니다. 예를 들어 코드 리뷰 수정이 끝났으면 `Finishing a Development Branch로 넘어가서 최종 상태를 정리합니다.`처럼 보여줍니다. 사용자가 그 전환을 요청하거나 승인하면 그때 `currentFlow`를 다음 flow로 바꿉니다.
+
 ## 검증
 
 ```powershell
