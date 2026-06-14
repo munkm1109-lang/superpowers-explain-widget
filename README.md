@@ -22,6 +22,22 @@ cd superpowers-explain-widget
 
 Git을 쓰지 않는 사용자는 GitHub에서 ZIP으로 내려받아 압축을 푼 뒤 실행 파일을 더블클릭하면 됩니다.
 
+## 웹 버전 다운로드
+
+Git을 모르는 사용자는 ZIP 파일로 받으면 됩니다.
+
+1. 먼저 [Node.js 20 이상](https://nodejs.org/)을 설치합니다.
+2. 웹 위젯 브랜치 ZIP을 다운로드합니다: [codex/web-widget ZIP](https://github.com/munkm1109-lang/superpowers-explain-widget/archive/refs/heads/codex/web-widget.zip)
+3. ZIP 압축을 풉니다.
+4. Windows에서는 `start-superpowers-web-widget.bat`을 더블클릭합니다.
+5. macOS 또는 Linux에서는 압축을 푼 폴더에서 아래 명령을 실행합니다.
+
+```sh
+./start-superpowers-web-widget.sh
+```
+
+실행 후 브라우저에서 `http://127.0.0.1:43821`을 열면 웹 위젯이 보입니다.
+
 ## 실행 방식 선택
 
 - Windows 전용 위젯: `start-superpowers-widget.bat`
