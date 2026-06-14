@@ -1,0 +1,15 @@
+﻿{
+  "linkId": "widget-example-link",
+  "sessionId": "manual-example-session",
+  "sessionLabel": "Example Codex session",
+  "workspacePath": "C:\\Users\\munkm\\OneDrive\\Documents\\New project",
+  "currentFlow": "brainstorming",
+  "status": "설계 검토 중",
+  "nextSkill": "writing-plans",
+  "recommendedAction": "설계 문서를 승인하면 구현 계획을 작성합니다.",
+  "blockedActions": [
+    "설계 승인 전 구현 코드를 작성하지 않습니다."
+  ],
+  "updatedAt": "2026-06-14T00:00:00+09:00",
+  "expiresAt": "2099-12-31T23:59:59+09:00"
+}
