@@ -31,7 +31,15 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\superpowers-widget.ps1
 3. 현재 Codex 세션에 Superpowers 위젯 연결을 요청합니다.
 4. Codex가 `.superpowers-widget/state.json`을 쓰면 위젯이 몇 초 안에 연결 상태를 표시합니다.
 
-다른 Codex 세션에 연결을 부탁할 때는 아래처럼 말하면 됩니다.
+위젯이 켜져 있고 연결 요청을 눌렀다면, 다른 Codex 세션에는 보통 위젯 코드만 줘도 됩니다.
+
+```text
+Superpowers 위젯에 연결해줘: widget-여기에-위젯-ID
+```
+
+위젯은 연결 요청을 만들 때 Windows의 공통 보관함인 `%LOCALAPPDATA%\SuperpowersExplainWidget\links`에도 자기 위치를 등록합니다. 그래서 같은 Windows 사용자 계정 안의 다른 Codex 세션은 이 코드를 보고 어느 위젯의 `state.json`에 연결해야 하는지 찾을 수 있습니다.
+
+만약 다른 세션이 코드만으로 찾지 못하면 아래처럼 말하면 됩니다.
 
 ```text
 이 프로젝트 폴더에서 아래 명령을 실행해서 Superpowers 위젯에 연결해줘.
@@ -46,6 +54,8 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\superpowers-widget.ps1
 ```
 
 이 명령은 `link-request.json`과 `state.json`을 같이 만들어서, 위젯이 연결 상태를 바로 인식하게 합니다.
+
+코드만으로 자동 연결되는 범위는 같은 컴퓨터, 같은 Windows 사용자 계정 안입니다. 다른 사람의 컴퓨터에 켜진 위젯은 내 컴퓨터의 Codex가 코드만으로 연결할 수 없습니다.
 
 `link-request.json`과 `state.json`은 런타임 파일이므로 커밋하지 않습니다.
 

@@ -17,12 +17,15 @@
 $ErrorActionPreference = "Stop"
 
 $Script:RootDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+$Script:ScriptPath = $MyInvocation.MyCommand.Path
 $Script:WidgetDir = Join-Path $Script:RootDir ".superpowers-widget"
 $Script:GuidePath = Join-Path $Script:WidgetDir "flow-guide.json"
 $Script:StatePath = Join-Path $Script:WidgetDir "state.json"
 $Script:LinkRequestPath = Join-Path $Script:WidgetDir "link-request.json"
 $Script:WorkspacePath = $Script:RootDir
 $Script:LastValidState = $null
+$Script:RegistryRoot = Join-Path ([Environment]::GetFolderPath("LocalApplicationData")) "SuperpowersExplainWidget"
+$Script:RegistryLinksDir = Join-Path $Script:RegistryRoot "links"
 
 function Read-JsonFile {
   param(
@@ -54,6 +57,12 @@ function ConvertTo-WidgetJson {
   return $Value | ConvertTo-Json -Depth 8
 }
 
+function Get-WidgetRegistryPath {
+  param([Parameter(Mandatory = $true)][string]$RequestedLinkId)
+  $safeName = $RequestedLinkId -replace "[^a-zA-Z0-9_.-]", "_"
+  return Join-Path $Script:RegistryLinksDir "$safeName.json"
+}
+
 function New-WidgetLinkId {
   $stamp = Get-Date -Format "yyyyMMdd-HHmmss"
   $suffix = [Guid]::NewGuid().ToString("N").Substring(0, 8)
@@ -69,15 +78,62 @@ function Write-LinkRequest {
 
   $now = Get-Date
   $requestLinkId = if ([string]::IsNullOrWhiteSpace($RequestedLinkId)) { New-WidgetLinkId } else { $RequestedLinkId }
+  $expiresAt = $now.AddHours(6)
   $request = [ordered]@{
     linkId = $requestLinkId
     workspacePath = $Script:WorkspacePath
     requestedAt = $now.ToString("o")
-    instruction = "현재 Codex 세션에서 이 프로젝트 폴더로 이동한 뒤 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\superpowers-widget.ps1 -ConnectSession -LinkId $requestLinkId 를 실행하세요."
+    expiresAt = $expiresAt.ToString("o")
+    statePath = $Script:StatePath
+    linkRequestPath = $Script:LinkRequestPath
+    scriptPath = $Script:ScriptPath
+    connectCommand = "powershell.exe -NoProfile -ExecutionPolicy Bypass -File `"$Script:ScriptPath`" -ConnectSession -LinkId $requestLinkId"
+    instruction = "Codex 세션에 $requestLinkId 만 알려줘도 됩니다. 자동 연결이 안 되면 connectCommand를 실행하세요."
   }
 
   ConvertTo-WidgetJson $request | Set-Content -LiteralPath $Script:LinkRequestPath -Encoding UTF8
+  Register-WidgetLink -Request ([pscustomobject]$request)
   return [pscustomobject]$request
+}
+
+function Register-WidgetLink {
+  param([Parameter(Mandatory = $true)]$Request)
+
+  if (-not (Test-Path -LiteralPath $Script:RegistryLinksDir)) {
+    New-Item -ItemType Directory -Path $Script:RegistryLinksDir | Out-Null
+  }
+
+  $registryEntry = [ordered]@{
+    linkId = [string]$Request.linkId
+    workspacePath = [string]$Request.workspacePath
+    statePath = [string]$Request.statePath
+    linkRequestPath = [string]$Request.linkRequestPath
+    scriptPath = [string]$Request.scriptPath
+    requestedAt = [string]$Request.requestedAt
+    expiresAt = [string]$Request.expiresAt
+  }
+
+  ConvertTo-WidgetJson $registryEntry | Set-Content -LiteralPath (Get-WidgetRegistryPath -RequestedLinkId ([string]$Request.linkId)) -Encoding UTF8
+}
+
+function Get-RegisteredWidgetLink {
+  param([Parameter(Mandatory = $true)][string]$RequestedLinkId)
+
+  $registryPath = Get-WidgetRegistryPath -RequestedLinkId $RequestedLinkId
+  $entry = Read-JsonFile -Path $registryPath
+  if (-not $entry) {
+    return $null
+  }
+
+  if ($entry.expiresAt) {
+    $expiresAt = [DateTimeOffset]::Parse([string]$entry.expiresAt)
+    if ([DateTimeOffset]::Now -gt $expiresAt) {
+      Remove-Item -LiteralPath $registryPath -ErrorAction SilentlyContinue
+      return $null
+    }
+  }
+
+  return $entry
 }
 
 function Write-SessionState {
@@ -93,18 +149,56 @@ function Write-SessionState {
     [string]$RequestedRecommendedReason
   )
 
-  if (-not (Test-Path -LiteralPath $Script:WidgetDir)) {
-    New-Item -ItemType Directory -Path $Script:WidgetDir | Out-Null
-  }
-
   $now = Get-Date
   $resolvedSessionId = if ([string]::IsNullOrWhiteSpace($RequestedSessionId)) { "codex-session-$($now.ToString("yyyyMMdd-HHmmss"))" } else { $RequestedSessionId }
-  $request = Write-LinkRequest -RequestedLinkId $RequestedLinkId
+  $registeredLink = Get-RegisteredWidgetLink -RequestedLinkId $RequestedLinkId
+
+  if ($registeredLink) {
+    $targetWorkspacePath = [string]$registeredLink.workspacePath
+    $targetStatePath = [string]$registeredLink.statePath
+    $targetLinkRequestPath = [string]$registeredLink.linkRequestPath
+    $targetScriptPath = [string]$registeredLink.scriptPath
+    if ([string]::IsNullOrWhiteSpace($targetStatePath)) {
+      $targetStatePath = $Script:StatePath
+    }
+    if ([string]::IsNullOrWhiteSpace($targetLinkRequestPath)) {
+      $targetLinkRequestPath = $Script:LinkRequestPath
+    }
+    if ([string]::IsNullOrWhiteSpace($targetScriptPath)) {
+      $targetScriptPath = $Script:ScriptPath
+    }
+  } else {
+    $request = Write-LinkRequest -RequestedLinkId $RequestedLinkId
+    $targetWorkspacePath = [string]$request.workspacePath
+    $targetStatePath = [string]$request.statePath
+    $targetLinkRequestPath = [string]$request.linkRequestPath
+    $targetScriptPath = [string]$request.scriptPath
+  }
+
+  $targetWidgetDir = Split-Path -Parent $targetStatePath
+  if (-not (Test-Path -LiteralPath $targetWidgetDir)) {
+    New-Item -ItemType Directory -Path $targetWidgetDir | Out-Null
+  }
+
+  $request = [ordered]@{
+    linkId = $RequestedLinkId
+    workspacePath = $targetWorkspacePath
+    requestedAt = $now.ToString("o")
+    expiresAt = $now.AddHours(6).ToString("o")
+    statePath = $targetStatePath
+    linkRequestPath = $targetLinkRequestPath
+    scriptPath = $targetScriptPath
+    connectCommand = "powershell.exe -NoProfile -ExecutionPolicy Bypass -File `"$targetScriptPath`" -ConnectSession -LinkId $RequestedLinkId"
+    instruction = "Codex 세션에 $RequestedLinkId 만 알려줘도 됩니다. 자동 연결이 안 되면 connectCommand를 실행하세요."
+  }
+  ConvertTo-WidgetJson $request | Set-Content -LiteralPath $targetLinkRequestPath -Encoding UTF8
+  Register-WidgetLink -Request ([pscustomobject]$request)
+
   $state = [ordered]@{
-    linkId = $request.linkId
+    linkId = $RequestedLinkId
     sessionId = $resolvedSessionId
     sessionLabel = $RequestedSessionLabel
-    workspacePath = $Script:WorkspacePath
+    workspacePath = $targetWorkspacePath
     currentFlow = $RequestedCurrentFlow
     activeSkill = $RequestedActiveSkill
     status = $RequestedStatus
@@ -116,7 +210,7 @@ function Write-SessionState {
     expiresAt = $now.AddHours(6).ToString("o")
   }
 
-  ConvertTo-WidgetJson $state | Set-Content -LiteralPath $Script:StatePath -Encoding UTF8
+  ConvertTo-WidgetJson $state | Set-Content -LiteralPath $targetStatePath -Encoding UTF8
   return [pscustomobject]$state
 }
 
