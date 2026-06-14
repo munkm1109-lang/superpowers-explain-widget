@@ -192,12 +192,18 @@ function New-TextBlock {
 function New-DetailRow {
   param(
     [string]$Label,
-    [string]$Value
+    [string]$Value,
+    [switch]$Highlight
   )
 
   $border = New-Object System.Windows.Controls.Border
-  $border.Background = "#0F0B19"
-  $border.BorderBrush = "#221936"
+  if ($Highlight) {
+    $border.Background = "#123B7A"
+    $border.BorderBrush = "#60A5FA"
+  } else {
+    $border.Background = "#0F0B19"
+    $border.BorderBrush = "#221936"
+  }
   $border.BorderThickness = "1"
   $border.CornerRadius = "8"
   $border.Padding = "10,8,10,8"
@@ -205,16 +211,23 @@ function New-DetailRow {
 
   $stack = New-Object System.Windows.Controls.StackPanel
   $labelPill = New-Object System.Windows.Controls.Border
-  $labelPill.Background = "#120D1D"
-  $labelPill.BorderBrush = "#3A2A56"
+  if ($Highlight) {
+    $labelPill.Background = "#1D4ED8"
+    $labelPill.BorderBrush = "#93C5FD"
+  } else {
+    $labelPill.Background = "#120D1D"
+    $labelPill.BorderBrush = "#3A2A56"
+  }
   $labelPill.BorderThickness = "1"
   $labelPill.CornerRadius = "6"
   $labelPill.Padding = "7,2,7,2"
   $labelPill.HorizontalAlignment = "Left"
   $labelPill.Margin = "0,0,0,6"
-  $labelPill.Child = New-TextBlock -Text $Label -FontSize 11 -Weight "Bold" -Color "#B8A7DC"
+  $labelColor = if ($Highlight) { "#DBEAFE" } else { "#B8A7DC" }
+  $valueColor = if ($Highlight) { "#F8FBFF" } else { "#EADFFF" }
+  $labelPill.Child = New-TextBlock -Text $Label -FontSize 11 -Weight "Bold" -Color $labelColor
   $stack.Children.Add($labelPill) | Out-Null
-  $stack.Children.Add((New-TextBlock -Text $Value -FontSize 13 -Color "#EADFFF")) | Out-Null
+  $stack.Children.Add((New-TextBlock -Text $Value -FontSize 13 -Color $valueColor)) | Out-Null
 
   $border.Child = $stack
   return $border
@@ -621,6 +634,15 @@ function Start-Widget {
   $latestConnectionState = [pscustomobject]@{
     Value = $null
   }
+  $liveDetailState = [pscustomobject]@{
+    FlowKey = ""
+    Action = ""
+    Reason = ""
+    HighlightUntil = [DateTime]::MinValue
+  }
+  $lastConnectionModeState = [pscustomobject]@{
+    Value = ""
+  }
   $detailState = [pscustomobject]@{
     CurrentItem = $null
   }
@@ -659,11 +681,47 @@ function Start-Widget {
       if ((Get-FlowKey -Value ([string]$view.Item.flow)) -eq $flowKey) {
         $lastFocusedFlowKey.Value = $flowKey
         $selectedGuideButton.Value = $view.Button
-        Show-ItemDetail -Item $view.Item
+        if ($detailModeState.Expanded) {
+          Show-ItemDetail -Item $view.Item
+        } else {
+          Update-GuideButtonStates
+        }
         $view.Button.BringIntoView()
         return
       }
     }
+  }
+
+  function Update-LiveDetailState {
+    param($State)
+
+    $flowKey = Get-FlowKey -Value ([string]$State.currentFlow)
+    $action = [string]$State.recommendedAction
+    $reason = [string]$State.recommendedReason
+    $changed = $liveDetailState.FlowKey -ne $flowKey -or $liveDetailState.Action -ne $action -or $liveDetailState.Reason -ne $reason
+
+    if ($changed) {
+      $liveDetailState.FlowKey = $flowKey
+      $liveDetailState.Action = $action
+      $liveDetailState.Reason = $reason
+      $liveDetailState.HighlightUntil = (Get-Date).AddSeconds(3)
+    }
+
+    return $changed
+  }
+
+  function Clear-LiveDetailState {
+    $liveDetailState.FlowKey = ""
+    $liveDetailState.Action = ""
+    $liveDetailState.Reason = ""
+    $liveDetailState.HighlightUntil = [DateTime]::MinValue
+  }
+
+  function Test-LiveDetailHighlight {
+    param($Item)
+
+    $itemFlowKey = Get-FlowKey -Value ([string]$Item.flow)
+    return $liveDetailState.FlowKey -eq $itemFlowKey -and (Get-Date) -lt $liveDetailState.HighlightUntil
   }
 
   function Get-DetailNowAction {
@@ -780,10 +838,11 @@ function Start-Widget {
     $detailHeader.Content = $detailHeaderGrid
     $detailStack.Children.Add($detailHeader) | Out-Null
 
+    $highlightLiveRows = Test-LiveDetailHighlight -Item $Item
     $detailStack.Children.Add((New-DetailRow -Label "선행 플러그인" -Value $Item.previousPlugin)) | Out-Null
-    $detailStack.Children.Add((New-DetailRow -Label "지금 할 일" -Value (Get-DetailNowAction -Item $Item))) | Out-Null
+    $detailStack.Children.Add((New-DetailRow -Label "지금 할 일" -Value (Get-DetailNowAction -Item $Item) -Highlight:$highlightLiveRows)) | Out-Null
     $detailStack.Children.Add((New-DetailRow -Label "다음 플러그인" -Value $Item.nextPlugin)) | Out-Null
-    $detailStack.Children.Add((New-DetailRow -Label "이유" -Value (Get-DetailReason -Item $Item))) | Out-Null
+    $detailStack.Children.Add((New-DetailRow -Label "이유" -Value (Get-DetailReason -Item $Item) -Highlight:$highlightLiveRows)) | Out-Null
   }
 
   foreach ($item in $items) {
@@ -859,16 +918,28 @@ function Start-Widget {
     Show-ItemDetail -Item $items[0]
   }
 
+  $detailHighlightTimer = New-Object System.Windows.Threading.DispatcherTimer
+  $detailHighlightTimer.Interval = [TimeSpan]::FromSeconds(3)
+  $detailHighlightTimer.Add_Tick({
+    $detailHighlightTimer.Stop()
+    if ($detailModeState.Expanded -and $detailState.CurrentItem) {
+      Show-ItemDetail -Item $detailState.CurrentItem
+    }
+  })
+
   $timer = New-Object System.Windows.Threading.DispatcherTimer
   $timer.Interval = [TimeSpan]::FromSeconds(2)
   $timer.Add_Tick({
     try {
       $connection = Get-ConnectionStatus
+      $modeChanged = $lastConnectionModeState.Value -ne [string]$connection.Mode
+      $lastConnectionModeState.Value = [string]$connection.Mode
       $statusTitle.Text = $connection.Title
       $statusMessage.Text = $connection.Message
 
-      if ($connection.State) {
+      if ($connection.Mode -eq "Linked" -and $connection.State) {
         $latestConnectionState.Value = $connection.State
+        $liveDetailChanged = Update-LiveDetailState -State $connection.State
         $blocked = ""
         if ($connection.State.blockedActions) {
           $blocked = " / 금지: " + (($connection.State.blockedActions | ForEach-Object { [string]$_ }) -join ", ")
@@ -884,22 +955,50 @@ function Start-Widget {
         $activeFlowState.Value = [string]$connection.State.currentFlow
         Update-GuideButtonStates
         Focus-ActiveFlow -Flow ([string]$connection.State.currentFlow)
-        if ($detailState.CurrentItem -and ((Get-FlowKey -Value ([string]$detailState.CurrentItem.flow)) -eq (Get-FlowKey -Value ([string]$connection.State.currentFlow)))) {
+        if ($detailModeState.Expanded -and $detailState.CurrentItem -and ($liveDetailChanged -or $modeChanged) -and ((Get-FlowKey -Value ([string]$detailState.CurrentItem.flow)) -eq (Get-FlowKey -Value ([string]$connection.State.currentFlow)))) {
           Show-ItemDetail -Item $detailState.CurrentItem
+          if ($liveDetailChanged) {
+            $detailHighlightTimer.Stop()
+            $detailHighlightTimer.Start()
+          }
         }
         $flowStatusPanel.Visibility = "Visible"
         $statusDetail.Text = "상태: $($connection.State.status)$activeSkillDetail$blocked"
+      } elseif ($connection.Mode -eq "Stale") {
+        $latestConnectionState.Value = $null
+        Clear-LiveDetailState
+        $activeFlowState.Value = ""
+        $lastFocusedFlowKey.Value = ""
+        Update-GuideButtonStates
+        $flowStatusPanel.Visibility = "Collapsed"
+        $statusDetail.Text = "상태 정보가 오래됐거나 현재 연결 요청과 맞지 않습니다. 다시 연결하세요."
+        if ($modeChanged -and $detailModeState.Expanded -and $detailState.CurrentItem) {
+          Show-ItemDetail -Item $detailState.CurrentItem
+        }
+        if ($connection.LinkRequest) {
+          $linkTextBox.Text = $connection.LinkRequest.linkId
+          $linkBox.Visibility = "Visible"
+        } else {
+          $linkBox.Visibility = "Collapsed"
+        }
       } elseif ($connection.LinkRequest) {
         $latestConnectionState.Value = $null
+        Clear-LiveDetailState
         $activeFlowState.Value = ""
+        $lastFocusedFlowKey.Value = ""
         Update-GuideButtonStates
         $flowStatusPanel.Visibility = "Collapsed"
         $statusDetail.Text = "아래 ID를 복사해서 현재 Codex 세션에 전달할 수 있습니다."
+        if ($modeChanged -and $detailModeState.Expanded -and $detailState.CurrentItem) {
+          Show-ItemDetail -Item $detailState.CurrentItem
+        }
         $linkTextBox.Text = $connection.LinkRequest.linkId
         $linkBox.Visibility = "Visible"
       } else {
         $latestConnectionState.Value = $null
+        Clear-LiveDetailState
         $activeFlowState.Value = ""
+        $lastFocusedFlowKey.Value = ""
         Update-GuideButtonStates
         $flowStatusPanel.Visibility = "Collapsed"
         $statusDetail.Text = ""
