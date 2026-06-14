@@ -71,7 +71,8 @@ function New-WidgetLinkId {
 
 function Get-WidgetConnectPrompt {
   param([Parameter(Mandatory = $true)][string]$RequestedLinkId)
-  return "Superpowers 위젯에 연결해줘: $RequestedLinkId"
+  $registryPath = "%LOCALAPPDATA%\SuperpowersExplainWidget\links\$RequestedLinkId.json"
+  return "Superpowers 위젯에 연결해줘: $RequestedLinkId. 같은 Windows 사용자라면 $registryPath 를 읽고, 그 안의 statePath/linkRequestPath에 연결 상태를 써줘. 이 파일을 못 찾으면 connectCommand나 superpowers-widget.ps1 -ConnectSession -LinkId $RequestedLinkId 를 실행해줘."
 }
 
 function Write-LinkRequest {

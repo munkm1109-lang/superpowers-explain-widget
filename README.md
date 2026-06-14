@@ -45,7 +45,9 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\superpowers-widget.ps1
 Superpowers 위젯에 연결해줘: widget-여기에-위젯-ID
 ```
 
-위젯은 연결 요청을 만들 때 Windows의 공통 보관함인 `%LOCALAPPDATA%\SuperpowersExplainWidget\links`에도 자기 위치를 등록합니다. 그래서 같은 Windows 사용자 계정 안의 다른 Codex 세션은 이 코드를 보고 어느 위젯의 `state.json`에 연결해야 하는지 찾을 수 있습니다.
+실제 위젯 복사 문장에는 `%LOCALAPPDATA%\SuperpowersExplainWidget\links\widget-여기에-위젯-ID.json` 경로도 함께 들어갑니다. 다른 Codex 세션이 `.superpowers`, `%TEMP%`, Codex 캐시만 찾는 경우가 있어서, 복사 문장 안에 정답 위치를 직접 넣어둔 것입니다.
+
+위젯은 연결 요청을 만들 때 Windows의 공통 보관함인 `%LOCALAPPDATA%\SuperpowersExplainWidget\links`에도 자기 위치를 등록합니다. 그래서 같은 Windows 사용자 계정 안의 다른 Codex 세션은 이 파일을 보고 어느 위젯의 `state.json`에 연결해야 하는지 찾을 수 있습니다.
 
 만약 다른 세션이 코드만으로 찾지 못하면 아래처럼 말하면 됩니다.
 
