@@ -156,7 +156,7 @@ function Assert-SelfTest {
   }
 
   foreach ($item in $guide.items) {
-    foreach ($field in @("flow", "situation", "previousPlugin", "reason", "nextPlugin", "plain")) {
+    foreach ($field in @("flow", "situation", "previousPlugin", "nowAction", "reason", "nextPlugin")) {
       if (-not $item.$field) {
         throw "Guide item is missing required field: $field"
       }
@@ -618,6 +618,9 @@ function Start-Widget {
   $lastFocusedFlowKey = [pscustomobject]@{
     Value = ""
   }
+  $latestConnectionState = [pscustomobject]@{
+    Value = $null
+  }
   $detailState = [pscustomobject]@{
     CurrentItem = $null
   }
@@ -661,6 +664,20 @@ function Start-Widget {
         return
       }
     }
+  }
+
+  function Get-DetailNowAction {
+    param($Item)
+
+    $state = $latestConnectionState.Value
+    if ($state) {
+      $sameFlow = (Get-FlowKey -Value ([string]$state.currentFlow)) -eq (Get-FlowKey -Value ([string]$Item.flow))
+      if ($sameFlow -and -not [string]::IsNullOrWhiteSpace([string]$state.recommendedAction)) {
+        return [string]$state.recommendedAction
+      }
+    }
+
+    return [string]$Item.nowAction
   }
 
   function Set-WidgetDetailMode {
@@ -750,9 +767,9 @@ function Start-Widget {
     $detailStack.Children.Add($detailHeader) | Out-Null
 
     $detailStack.Children.Add((New-DetailRow -Label "선행 플러그인" -Value $Item.previousPlugin)) | Out-Null
-    $detailStack.Children.Add((New-DetailRow -Label "이유" -Value $Item.reason)) | Out-Null
+    $detailStack.Children.Add((New-DetailRow -Label "지금 할 일" -Value (Get-DetailNowAction -Item $Item))) | Out-Null
     $detailStack.Children.Add((New-DetailRow -Label "다음 플러그인" -Value $Item.nextPlugin)) | Out-Null
-    $detailStack.Children.Add((New-DetailRow -Label "쉬운설명" -Value $Item.plain)) | Out-Null
+    $detailStack.Children.Add((New-DetailRow -Label "이유" -Value $Item.reason)) | Out-Null
   }
 
   foreach ($item in $items) {
@@ -837,6 +854,7 @@ function Start-Widget {
       $statusMessage.Text = $connection.Message
 
       if ($connection.State) {
+        $latestConnectionState.Value = $connection.State
         $blocked = ""
         if ($connection.State.blockedActions) {
           $blocked = " / 금지: " + (($connection.State.blockedActions | ForEach-Object { [string]$_ }) -join ", ")
@@ -852,9 +870,13 @@ function Start-Widget {
         $activeFlowState.Value = [string]$connection.State.currentFlow
         Update-GuideButtonStates
         Focus-ActiveFlow -Flow ([string]$connection.State.currentFlow)
+        if ($detailState.CurrentItem -and ((Get-FlowKey -Value ([string]$detailState.CurrentItem.flow)) -eq (Get-FlowKey -Value ([string]$connection.State.currentFlow)))) {
+          Show-ItemDetail -Item $detailState.CurrentItem
+        }
         $flowStatusPanel.Visibility = "Visible"
         $statusDetail.Text = "상태: $($connection.State.status)$activeSkillDetail$blocked"
       } elseif ($connection.LinkRequest) {
+        $latestConnectionState.Value = $null
         $activeFlowState.Value = ""
         Update-GuideButtonStates
         $flowStatusPanel.Visibility = "Collapsed"
@@ -862,6 +884,7 @@ function Start-Widget {
         $linkTextBox.Text = $connection.LinkRequest.linkId
         $linkBox.Visibility = "Visible"
       } else {
+        $latestConnectionState.Value = $null
         $activeFlowState.Value = ""
         Update-GuideButtonStates
         $flowStatusPanel.Visibility = "Collapsed"
