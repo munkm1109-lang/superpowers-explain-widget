@@ -31,6 +31,22 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\superpowers-widget.ps1
 3. 현재 Codex 세션에 Superpowers 위젯 연결을 요청합니다.
 4. Codex가 `.superpowers-widget/state.json`을 쓰면 위젯이 몇 초 안에 연결 상태를 표시합니다.
 
+다른 Codex 세션에 연결을 부탁할 때는 아래처럼 말하면 됩니다.
+
+```text
+이 프로젝트 폴더에서 아래 명령을 실행해서 Superpowers 위젯에 연결해줘.
+
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\superpowers-widget.ps1 -ConnectSession -LinkId widget-여기에-위젯-ID
+```
+
+예를 들어 위젯에 `widget-20260614-224924-62a396fc`가 보이면:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\superpowers-widget.ps1 -ConnectSession -LinkId widget-20260614-224924-62a396fc
+```
+
+이 명령은 `link-request.json`과 `state.json`을 같이 만들어서, 위젯이 연결 상태를 바로 인식하게 합니다.
+
 `link-request.json`과 `state.json`은 런타임 파일이므로 커밋하지 않습니다.
 
 `state.json`에서 `currentFlow`는 위젯이 파란색으로 강조할 전체 작업 흐름입니다. `activeSkill`은 중간에 호출한 보조 skill을 설명할 때만 사용합니다. 예를 들어 전체 위젯 개발이 실행 단계라면 `currentFlow`는 `executing-plans`로 유지하고, 부분 문제를 정리하려고 Brainstorming을 호출한 경우에만 `activeSkill`을 `brainstorming`으로 씁니다.

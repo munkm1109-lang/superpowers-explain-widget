@@ -1,7 +1,17 @@
 ﻿param(
   [switch]$SelfTest,
   [switch]$CreateLinkRequest,
-  [switch]$ConnectionStatus
+  [switch]$ConnectionStatus,
+  [switch]$ConnectSession,
+  [string]$LinkId,
+  [string]$SessionId,
+  [string]$SessionLabel = "Current Codex session",
+  [string]$CurrentFlow = "brainstorming",
+  [string]$ActiveSkill = "",
+  [Alias("Status")][string]$SessionStatus = "Codex 세션과 연결됨",
+  [string]$NextSkill = "writing-plans",
+  [string]$RecommendedAction = "현재 작업 흐름을 확인하고 다음 Superpowers flow를 고릅니다.",
+  [string]$RecommendedReason = "위젯이 현재 Codex 세션의 전체 작업 흐름과 다음 행동을 표시할 수 있어야 하기 때문입니다."
 )
 
 $ErrorActionPreference = "Stop"
@@ -51,20 +61,63 @@ function New-WidgetLinkId {
 }
 
 function Write-LinkRequest {
+  param([string]$RequestedLinkId)
+
   if (-not (Test-Path -LiteralPath $Script:WidgetDir)) {
     New-Item -ItemType Directory -Path $Script:WidgetDir | Out-Null
   }
 
   $now = Get-Date
+  $requestLinkId = if ([string]::IsNullOrWhiteSpace($RequestedLinkId)) { New-WidgetLinkId } else { $RequestedLinkId }
   $request = [ordered]@{
-    linkId = New-WidgetLinkId
+    linkId = $requestLinkId
     workspacePath = $Script:WorkspacePath
     requestedAt = $now.ToString("o")
-    instruction = "현재 Codex 세션에서 'Superpowers 위젯 연결해줘'라고 요청하세요."
+    instruction = "현재 Codex 세션에서 이 프로젝트 폴더로 이동한 뒤 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\superpowers-widget.ps1 -ConnectSession -LinkId $requestLinkId 를 실행하세요."
   }
 
   ConvertTo-WidgetJson $request | Set-Content -LiteralPath $Script:LinkRequestPath -Encoding UTF8
   return [pscustomobject]$request
+}
+
+function Write-SessionState {
+  param(
+    [Parameter(Mandatory = $true)][string]$RequestedLinkId,
+    [string]$RequestedSessionId,
+    [string]$RequestedSessionLabel,
+    [string]$RequestedCurrentFlow,
+    [string]$RequestedActiveSkill,
+    [string]$RequestedStatus,
+    [string]$RequestedNextSkill,
+    [string]$RequestedRecommendedAction,
+    [string]$RequestedRecommendedReason
+  )
+
+  if (-not (Test-Path -LiteralPath $Script:WidgetDir)) {
+    New-Item -ItemType Directory -Path $Script:WidgetDir | Out-Null
+  }
+
+  $now = Get-Date
+  $resolvedSessionId = if ([string]::IsNullOrWhiteSpace($RequestedSessionId)) { "codex-session-$($now.ToString("yyyyMMdd-HHmmss"))" } else { $RequestedSessionId }
+  $request = Write-LinkRequest -RequestedLinkId $RequestedLinkId
+  $state = [ordered]@{
+    linkId = $request.linkId
+    sessionId = $resolvedSessionId
+    sessionLabel = $RequestedSessionLabel
+    workspacePath = $Script:WorkspacePath
+    currentFlow = $RequestedCurrentFlow
+    activeSkill = $RequestedActiveSkill
+    status = $RequestedStatus
+    nextSkill = $RequestedNextSkill
+    recommendedAction = $RequestedRecommendedAction
+    recommendedReason = $RequestedRecommendedReason
+    blockedActions = @("보조 skill 호출만으로 전체 currentFlow를 바꾸지 않습니다.", "런타임 state.json과 link-request.json은 커밋하지 않습니다.")
+    updatedAt = $now.ToString("o")
+    expiresAt = $now.AddHours(6).ToString("o")
+  }
+
+  ConvertTo-WidgetJson $state | Set-Content -LiteralPath $Script:StatePath -Encoding UTF8
+  return [pscustomobject]$state
 }
 
 function Get-LatestLinkRequest {
@@ -1034,7 +1087,7 @@ if ($SelfTest) {
 }
 
 if ($CreateLinkRequest) {
-  $request = Write-LinkRequest
+  $request = Write-LinkRequest -RequestedLinkId $LinkId
   ConvertTo-WidgetJson $request
   exit 0
 }
@@ -1042,6 +1095,29 @@ if ($CreateLinkRequest) {
 if ($ConnectionStatus) {
   $status = Get-ConnectionStatus
   ConvertTo-WidgetJson $status
+  exit 0
+}
+
+if ($ConnectSession) {
+  if ([string]::IsNullOrWhiteSpace($LinkId)) {
+    $request = Get-LatestLinkRequest
+    if (-not $request -or [string]::IsNullOrWhiteSpace([string]$request.linkId)) {
+      throw "LinkId가 필요합니다. 위젯에서 연결 요청을 누른 뒤 표시된 widget-... 값을 -LinkId로 전달하세요."
+    }
+    $LinkId = [string]$request.linkId
+  }
+
+  $state = Write-SessionState `
+    -RequestedLinkId $LinkId `
+    -RequestedSessionId $SessionId `
+    -RequestedSessionLabel $SessionLabel `
+    -RequestedCurrentFlow $CurrentFlow `
+    -RequestedActiveSkill $ActiveSkill `
+    -RequestedStatus $SessionStatus `
+    -RequestedNextSkill $NextSkill `
+    -RequestedRecommendedAction $RecommendedAction `
+    -RequestedRecommendedReason $RecommendedReason
+  ConvertTo-WidgetJson $state
   exit 0
 }
 
