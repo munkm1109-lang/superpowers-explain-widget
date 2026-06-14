@@ -36,10 +36,10 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\superpowers-widget.ps1
 
 1. 위젯에서 `Codex 세션 연결 요청`을 누릅니다.
 2. `.superpowers-widget/link-request.json`이 생성됩니다.
-3. 현재 Codex 세션에 Superpowers 위젯 연결을 요청합니다.
+3. 위젯에 표시되는 `Superpowers 위젯에 연결해줘: widget-...` 문장을 통째로 복사합니다.
 4. Codex가 `.superpowers-widget/state.json`을 쓰면 위젯이 몇 초 안에 연결 상태를 표시합니다.
 
-위젯이 켜져 있고 연결 요청을 눌렀다면, 다른 Codex 세션에는 보통 위젯 코드만 줘도 됩니다.
+위젯이 켜져 있고 연결 요청을 눌렀다면, 다른 Codex 세션에는 위젯에 표시된 문장을 그대로 붙여넣으면 됩니다.
 
 ```text
 Superpowers 위젯에 연결해줘: widget-여기에-위젯-ID

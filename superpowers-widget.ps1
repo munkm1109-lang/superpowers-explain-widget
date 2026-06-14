@@ -69,6 +69,11 @@ function New-WidgetLinkId {
   return "widget-$stamp-$suffix"
 }
 
+function Get-WidgetConnectPrompt {
+  param([Parameter(Mandatory = $true)][string]$RequestedLinkId)
+  return "Superpowers 위젯에 연결해줘: $RequestedLinkId"
+}
+
 function Write-LinkRequest {
   param([string]$RequestedLinkId)
 
@@ -79,6 +84,7 @@ function Write-LinkRequest {
   $now = Get-Date
   $requestLinkId = if ([string]::IsNullOrWhiteSpace($RequestedLinkId)) { New-WidgetLinkId } else { $RequestedLinkId }
   $expiresAt = $now.AddHours(6)
+  $connectPrompt = Get-WidgetConnectPrompt -RequestedLinkId $requestLinkId
   $request = [ordered]@{
     linkId = $requestLinkId
     workspacePath = $Script:WorkspacePath
@@ -88,7 +94,8 @@ function Write-LinkRequest {
     linkRequestPath = $Script:LinkRequestPath
     scriptPath = $Script:ScriptPath
     connectCommand = "powershell.exe -NoProfile -ExecutionPolicy Bypass -File `"$Script:ScriptPath`" -ConnectSession -LinkId $requestLinkId"
-    instruction = "Codex 세션에 $requestLinkId 만 알려줘도 됩니다. 자동 연결이 안 되면 connectCommand를 실행하세요."
+    connectPrompt = $connectPrompt
+    instruction = "Codex 세션에 `"$connectPrompt`" 전체 문장을 알려주세요. 자동 연결이 안 되면 connectCommand를 실행하세요."
   }
 
   ConvertTo-WidgetJson $request | Set-Content -LiteralPath $Script:LinkRequestPath -Encoding UTF8
@@ -180,6 +187,7 @@ function Write-SessionState {
     New-Item -ItemType Directory -Path $targetWidgetDir | Out-Null
   }
 
+  $connectPrompt = Get-WidgetConnectPrompt -RequestedLinkId $RequestedLinkId
   $request = [ordered]@{
     linkId = $RequestedLinkId
     workspacePath = $targetWorkspacePath
@@ -189,7 +197,8 @@ function Write-SessionState {
     linkRequestPath = $targetLinkRequestPath
     scriptPath = $targetScriptPath
     connectCommand = "powershell.exe -NoProfile -ExecutionPolicy Bypass -File `"$targetScriptPath`" -ConnectSession -LinkId $RequestedLinkId"
-    instruction = "Codex 세션에 $RequestedLinkId 만 알려줘도 됩니다. 자동 연결이 안 되면 connectCommand를 실행하세요."
+    connectPrompt = $connectPrompt
+    instruction = "Codex 세션에 `"$connectPrompt`" 전체 문장을 알려주세요. 자동 연결이 안 되면 connectCommand를 실행하세요."
   }
   ConvertTo-WidgetJson $request | Set-Content -LiteralPath $targetLinkRequestPath -Encoding UTF8
   Register-WidgetLink -Request ([pscustomobject]$request)
@@ -621,7 +630,7 @@ function Start-Widget {
   $linkGrid = New-Object System.Windows.Controls.Grid
   $linkGrid.ColumnDefinitions.Add((New-Object System.Windows.Controls.ColumnDefinition)) | Out-Null
   $copyCol = New-Object System.Windows.Controls.ColumnDefinition
-  $copyCol.Width = "72"
+  $copyCol.Width = "88"
   $linkGrid.ColumnDefinitions.Add($copyCol) | Out-Null
   $linkBox.Child = $linkGrid
 
@@ -638,7 +647,7 @@ function Start-Widget {
   $linkGrid.Children.Add($linkTextBox) | Out-Null
 
   $copyButton = New-Object System.Windows.Controls.Button
-  $copyButton.Content = "복사"
+  $copyButton.Content = "문장 복사"
   $copyButton.Height = 28
   $copyButton.Margin = "8,0,0,0"
   $copyButton.Background = "#151024"
@@ -663,10 +672,10 @@ function Start-Widget {
   $connectButton.Add_Click({
     $request = Write-LinkRequest
     $statusTitle.Text = "연결 요청 생성됨"
-    $statusMessage.Text = "현재 Codex 세션에서 'Superpowers 위젯 연결해줘'라고 요청하세요."
-    $statusDetail.Text = "아래 ID를 복사해서 현재 Codex 세션에 전달할 수 있습니다."
-    $linkTextBox.Text = $request.linkId
-    $copyButton.Content = "복사"
+    $statusMessage.Text = "현재 Codex 세션에 아래 문장을 그대로 전달하세요."
+    $statusDetail.Text = "아래 문장을 통째로 복사해서 Codex 세션에 붙여넣으면 됩니다."
+    $linkTextBox.Text = $request.connectPrompt
+    $copyButton.Content = "문장 복사"
     $linkBox.Visibility = "Visible"
   })
   $copyButton.Add_Click({
@@ -1123,7 +1132,11 @@ function Start-Widget {
           Show-ItemDetail -Item $detailState.CurrentItem
         }
         if ($connection.LinkRequest) {
-          $linkTextBox.Text = $connection.LinkRequest.linkId
+          $promptText = [string]$connection.LinkRequest.connectPrompt
+          if ([string]::IsNullOrWhiteSpace($promptText)) {
+            $promptText = Get-WidgetConnectPrompt -RequestedLinkId ([string]$connection.LinkRequest.linkId)
+          }
+          $linkTextBox.Text = $promptText
           $linkBox.Visibility = "Visible"
         } else {
           $linkBox.Visibility = "Collapsed"
@@ -1135,11 +1148,15 @@ function Start-Widget {
         $lastFocusedFlowKey.Value = ""
         Update-GuideButtonStates
         $flowStatusPanel.Visibility = "Collapsed"
-        $statusDetail.Text = "아래 ID를 복사해서 현재 Codex 세션에 전달할 수 있습니다."
+        $statusDetail.Text = "아래 문장을 통째로 복사해서 Codex 세션에 붙여넣으면 됩니다."
         if ($modeChanged -and $detailModeState.Expanded -and $detailState.CurrentItem) {
           Show-ItemDetail -Item $detailState.CurrentItem
         }
-        $linkTextBox.Text = $connection.LinkRequest.linkId
+        $promptText = [string]$connection.LinkRequest.connectPrompt
+        if ([string]::IsNullOrWhiteSpace($promptText)) {
+          $promptText = Get-WidgetConnectPrompt -RequestedLinkId ([string]$connection.LinkRequest.linkId)
+        }
+        $linkTextBox.Text = $promptText
         $linkBox.Visibility = "Visible"
       } else {
         $latestConnectionState.Value = $null
