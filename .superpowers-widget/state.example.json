@@ -2,7 +2,7 @@
   "linkId": "widget-example-link",
   "sessionId": "manual-example-session",
   "sessionLabel": "Example Codex session",
-  "workspacePath": "C:\\Users\\munkm\\OneDrive\\Documents\\New project",
+  "workspacePath": "C:\\Users\\<사용자>\\Documents\\New project",
   "currentFlow": "requesting-code-review",
   "activeSkill": "verification",
   "status": "코드 리뷰 수정과 확인이 끝난 상태",
