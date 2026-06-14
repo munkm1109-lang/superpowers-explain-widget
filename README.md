@@ -1,1 +1,31 @@
-# Superpowers_Explain_Widget
+# Superpowers Explain Widget
+
+Windows에서 더블클릭으로 여는 Superpowers 흐름 안내 위젯입니다. 위젯은 로컬 JSON 파일만 읽고 쓰며, Codex나 AI 모델을 직접 호출하지 않습니다.
+
+## 실행
+
+`start-superpowers-widget.bat`을 더블클릭합니다.
+
+PowerShell에서 확인하려면:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\superpowers-widget.ps1
+```
+
+## Codex 세션 연결
+
+1. 위젯에서 `Codex 세션 연결 요청`을 누릅니다.
+2. `.superpowers-widget/link-request.json`이 생성됩니다.
+3. 현재 Codex 세션에 Superpowers 위젯 연결을 요청합니다.
+4. Codex가 `.superpowers-widget/state.json`을 쓰면 위젯이 몇 초 안에 연결 상태를 표시합니다.
+
+`link-request.json`과 `state.json`은 런타임 파일이므로 커밋하지 않습니다.
+
+## 검증
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\superpowers-widget.ps1 -SelfTest
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\superpowers-widget.ps1 -ConnectionStatus
+```
+
+정상 상태에서는 `SelfTest passed`가 출력되고, 연결 전에는 `Mode`가 `Guide`로 표시됩니다.

@@ -107,7 +107,7 @@ function Get-ConnectionStatus {
       Mode = "Guide"
       Title = "안내 모드"
       Message = "아직 Codex 세션과 연결하지 않았습니다."
-      State = $state
+      State = $null
       LinkRequest = $null
     }
   }
@@ -843,8 +843,20 @@ function Start-Widget {
     } catch {
       $statusTitle.Text = "상태 읽기 오류"
       $statusMessage.Text = "상태 파일을 읽을 수 없습니다."
-      $flowStatusPanel.Visibility = "Collapsed"
-      $statusDetail.Text = $_.Exception.Message
+      if ($Script:LastValidState) {
+        $displayFlow = Get-DisplayFlowName -Value ([string]$Script:LastValidState.currentFlow) -Buttons $guideButtons
+        $currentFlowText.Text = "Flow: $displayFlow"
+        $nextFlowText.Text = "Next: $($Script:LastValidState.nextSkill)"
+        $activeFlowState.Value = [string]$Script:LastValidState.currentFlow
+        Update-GuideButtonStates
+        $flowStatusPanel.Visibility = "Visible"
+        $statusDetail.Text = "마지막 정상 상태를 표시 중입니다. 오류: $($_.Exception.Message)"
+      } else {
+        $activeFlowState.Value = ""
+        Update-GuideButtonStates
+        $flowStatusPanel.Visibility = "Collapsed"
+        $statusDetail.Text = $_.Exception.Message
+      }
     }
   })
   $timer.Start()
