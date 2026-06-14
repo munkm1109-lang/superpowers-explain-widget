@@ -2,6 +2,18 @@
 
 Windows에서 더블클릭으로 여는 Superpowers 흐름 안내 위젯입니다. 위젯은 로컬 JSON 파일만 읽고 쓰며, Codex나 AI 모델을 직접 호출하지 않습니다.
 
+## 설치
+
+Windows에서 PowerShell과 Git이 설치되어 있으면 바로 사용할 수 있습니다.
+
+```powershell
+git clone https://github.com/munkm1109-lang/superpowers-explain-widget.git
+cd superpowers-explain-widget
+.\start-superpowers-widget.bat
+```
+
+Git을 쓰지 않는 사용자는 GitHub에서 ZIP으로 내려받아 압축을 푼 뒤 `start-superpowers-widget.bat`을 더블클릭하면 됩니다.
+
 ## 실행
 
 `start-superpowers-widget.bat`을 더블클릭합니다.
