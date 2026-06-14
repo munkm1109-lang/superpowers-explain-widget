@@ -23,6 +23,8 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\superpowers-widget.ps1
 
 `state.json`에서 `currentFlow`는 위젯이 파란색으로 강조할 전체 작업 흐름입니다. `activeSkill`은 중간에 호출한 보조 skill을 설명할 때만 사용합니다. 예를 들어 전체 위젯 개발이 실행 단계라면 `currentFlow`는 `executing-plans`로 유지하고, 부분 문제를 정리하려고 Brainstorming을 호출한 경우에만 `activeSkill`을 `brainstorming`으로 씁니다.
 
+상세 패널의 `지금 할 일`은 활성 flow의 `recommendedAction`을 우선 표시합니다. `이유`도 활성 flow에서는 `recommendedReason`을 우선 표시하므로, Codex가 다음 행동과 그 이유를 함께 실시간으로 갱신할 수 있습니다.
+
 ## 검증
 
 ```powershell

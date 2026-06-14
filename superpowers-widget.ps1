@@ -680,6 +680,20 @@ function Start-Widget {
     return [string]$Item.nowAction
   }
 
+  function Get-DetailReason {
+    param($Item)
+
+    $state = $latestConnectionState.Value
+    if ($state) {
+      $sameFlow = (Get-FlowKey -Value ([string]$state.currentFlow)) -eq (Get-FlowKey -Value ([string]$Item.flow))
+      if ($sameFlow -and -not [string]::IsNullOrWhiteSpace([string]$state.recommendedReason)) {
+        return [string]$state.recommendedReason
+      }
+    }
+
+    return [string]$Item.reason
+  }
+
   function Set-WidgetDetailMode {
     param([bool]$Expanded)
 
@@ -769,7 +783,7 @@ function Start-Widget {
     $detailStack.Children.Add((New-DetailRow -Label "선행 플러그인" -Value $Item.previousPlugin)) | Out-Null
     $detailStack.Children.Add((New-DetailRow -Label "지금 할 일" -Value (Get-DetailNowAction -Item $Item))) | Out-Null
     $detailStack.Children.Add((New-DetailRow -Label "다음 플러그인" -Value $Item.nextPlugin)) | Out-Null
-    $detailStack.Children.Add((New-DetailRow -Label "이유" -Value $Item.reason)) | Out-Null
+    $detailStack.Children.Add((New-DetailRow -Label "이유" -Value (Get-DetailReason -Item $Item))) | Out-Null
   }
 
   foreach ($item in $items) {
