@@ -22,8 +22,12 @@ $Script:WidgetDir = Join-Path $Script:RootDir ".superpowers-widget"
 $Script:GuidePath = Join-Path $Script:WidgetDir "flow-guide.json"
 $Script:StatePath = Join-Path $Script:WidgetDir "state.json"
 $Script:LinkRequestPath = Join-Path $Script:WidgetDir "link-request.json"
+$Script:RuntimeDir = Join-Path $Script:WidgetDir "runtime"
+$Script:RuntimeLinksDir = Join-Path $Script:RuntimeDir "links"
+$Script:RuntimeStatesDir = Join-Path $Script:RuntimeDir "states"
 $Script:WorkspacePath = $Script:RootDir
 $Script:LastValidState = $null
+$Script:ActiveLinkId = $null
 $Script:RegistryRoot = Join-Path ([Environment]::GetFolderPath("LocalApplicationData")) "SuperpowersExplainWidget"
 $Script:RegistryLinksDir = Join-Path $Script:RegistryRoot "links"
 
@@ -57,9 +61,24 @@ function ConvertTo-WidgetJson {
   return $Value | ConvertTo-Json -Depth 8
 }
 
+function Get-SafeWidgetFileName {
+  param([Parameter(Mandatory = $true)][string]$Value)
+  return $Value -replace "[^a-zA-Z0-9_.-]", "_"
+}
+
+function Get-WidgetRuntimePaths {
+  param([Parameter(Mandatory = $true)][string]$RequestedLinkId)
+  $safeLinkId = Get-SafeWidgetFileName -Value $RequestedLinkId
+  return [pscustomobject]@{
+    linkId = $safeLinkId
+    linkRequestPath = Join-Path $Script:RuntimeLinksDir "$safeLinkId.json"
+    statePath = Join-Path $Script:RuntimeStatesDir "$safeLinkId.json"
+  }
+}
+
 function Get-WidgetRegistryPath {
   param([Parameter(Mandatory = $true)][string]$RequestedLinkId)
-  $safeName = $RequestedLinkId -replace "[^a-zA-Z0-9_.-]", "_"
+  $safeName = Get-SafeWidgetFileName -Value $RequestedLinkId
   return Join-Path $Script:RegistryLinksDir "$safeName.json"
 }
 
@@ -81,9 +100,17 @@ function Write-LinkRequest {
   if (-not (Test-Path -LiteralPath $Script:WidgetDir)) {
     New-Item -ItemType Directory -Path $Script:WidgetDir | Out-Null
   }
+  foreach ($dir in @($Script:RuntimeLinksDir, $Script:RuntimeStatesDir)) {
+    if (-not (Test-Path -LiteralPath $dir)) {
+      New-Item -ItemType Directory -Path $dir | Out-Null
+    }
+  }
 
   $now = Get-Date
   $requestLinkId = if ([string]::IsNullOrWhiteSpace($RequestedLinkId)) { New-WidgetLinkId } else { $RequestedLinkId }
+  $runtimePaths = Get-WidgetRuntimePaths -RequestedLinkId $requestLinkId
+  $requestLinkId = [string]$runtimePaths.linkId
+  $Script:ActiveLinkId = $requestLinkId
   $expiresAt = $now.AddHours(6)
   $connectPrompt = Get-WidgetConnectPrompt -RequestedLinkId $requestLinkId
   $request = [ordered]@{
@@ -91,14 +118,15 @@ function Write-LinkRequest {
     workspacePath = $Script:WorkspacePath
     requestedAt = $now.ToString("o")
     expiresAt = $expiresAt.ToString("o")
-    statePath = $Script:StatePath
-    linkRequestPath = $Script:LinkRequestPath
+    statePath = $runtimePaths.statePath
+    linkRequestPath = $runtimePaths.linkRequestPath
     scriptPath = $Script:ScriptPath
     connectCommand = "powershell.exe -NoProfile -ExecutionPolicy Bypass -File `"$Script:ScriptPath`" -ConnectSession -LinkId $requestLinkId"
     connectPrompt = $connectPrompt
     instruction = "Codex 세션에 `"$connectPrompt`" 전체 문장을 알려주세요. 자동 연결이 안 되면 connectCommand를 실행하세요."
   }
 
+  ConvertTo-WidgetJson $request | Set-Content -LiteralPath $runtimePaths.linkRequestPath -Encoding UTF8
   ConvertTo-WidgetJson $request | Set-Content -LiteralPath $Script:LinkRequestPath -Encoding UTF8
   Register-WidgetLink -Request ([pscustomobject]$request)
   return [pscustomobject]$request
@@ -159,7 +187,9 @@ function Write-SessionState {
 
   $now = Get-Date
   $resolvedSessionId = if ([string]::IsNullOrWhiteSpace($RequestedSessionId)) { "codex-session-$($now.ToString("yyyyMMdd-HHmmss"))" } else { $RequestedSessionId }
+  $RequestedLinkId = Get-SafeWidgetFileName -Value $RequestedLinkId
   $registeredLink = Get-RegisteredWidgetLink -RequestedLinkId $RequestedLinkId
+  $Script:ActiveLinkId = $RequestedLinkId
 
   if ($registeredLink) {
     $targetWorkspacePath = [string]$registeredLink.workspacePath
@@ -187,6 +217,10 @@ function Write-SessionState {
   if (-not (Test-Path -LiteralPath $targetWidgetDir)) {
     New-Item -ItemType Directory -Path $targetWidgetDir | Out-Null
   }
+  $targetLinkDir = Split-Path -Parent $targetLinkRequestPath
+  if (-not (Test-Path -LiteralPath $targetLinkDir)) {
+    New-Item -ItemType Directory -Path $targetLinkDir | Out-Null
+  }
 
   $connectPrompt = Get-WidgetConnectPrompt -RequestedLinkId $RequestedLinkId
   $request = [ordered]@{
@@ -202,6 +236,9 @@ function Write-SessionState {
     instruction = "Codex 세션에 `"$connectPrompt`" 전체 문장을 알려주세요. 자동 연결이 안 되면 connectCommand를 실행하세요."
   }
   ConvertTo-WidgetJson $request | Set-Content -LiteralPath $targetLinkRequestPath -Encoding UTF8
+  if ($targetLinkRequestPath -ne $Script:LinkRequestPath) {
+    ConvertTo-WidgetJson $request | Set-Content -LiteralPath $Script:LinkRequestPath -Encoding UTF8
+  }
   Register-WidgetLink -Request ([pscustomobject]$request)
 
   $state = [ordered]@{
@@ -221,11 +258,39 @@ function Write-SessionState {
   }
 
   ConvertTo-WidgetJson $state | Set-Content -LiteralPath $targetStatePath -Encoding UTF8
+  if ($targetStatePath -ne $Script:StatePath) {
+    ConvertTo-WidgetJson $state | Set-Content -LiteralPath $Script:StatePath -Encoding UTF8
+  }
   return [pscustomobject]$state
 }
 
 function Get-LatestLinkRequest {
-  return Read-JsonFile -Path $Script:LinkRequestPath
+  if ($Script:ActiveLinkId) {
+    $paths = Get-WidgetRuntimePaths -RequestedLinkId $Script:ActiveLinkId
+    $activeRequest = Read-JsonFile -Path $paths.linkRequestPath
+    if ($activeRequest) {
+      return $activeRequest
+    }
+  }
+
+  if (Test-Path -LiteralPath $Script:RuntimeLinksDir) {
+    $latest = Get-ChildItem -LiteralPath $Script:RuntimeLinksDir -Filter "*.json" |
+      Sort-Object LastWriteTime -Descending |
+      Select-Object -First 1
+    if ($latest) {
+      $latestRequest = Read-JsonFile -Path $latest.FullName
+      if ($latestRequest -and $latestRequest.linkId) {
+        $Script:ActiveLinkId = [string]$latestRequest.linkId
+      }
+      return $latestRequest
+    }
+  }
+
+  $legacyRequest = Read-JsonFile -Path $Script:LinkRequestPath
+  if ($legacyRequest -and $legacyRequest.linkId) {
+    $Script:ActiveLinkId = [string]$legacyRequest.linkId
+  }
+  return $legacyRequest
 }
 
 function Test-IsFreshState {
@@ -253,7 +318,8 @@ function Test-IsFreshState {
 
 function Get-ConnectionStatus {
   $linkRequest = Get-LatestLinkRequest
-  $state = Read-JsonFile -Path $Script:StatePath
+  $statePath = if ($linkRequest -and $linkRequest.statePath) { [string]$linkRequest.statePath } else { $Script:StatePath }
+  $state = Read-JsonFile -Path $statePath
 
   if ($state) {
     $Script:LastValidState = $state
@@ -319,9 +385,29 @@ function Assert-SelfTest {
     }
   }
 
+  $firstRuntimeRequest = Write-LinkRequest -RequestedLinkId "widget-selftest-runtime-a"
+  $secondRuntimeRequest = Write-LinkRequest -RequestedLinkId "widget-selftest-runtime-b"
+  if ([string]$firstRuntimeRequest.statePath -eq [string]$secondRuntimeRequest.statePath) {
+    throw "Runtime state paths must be widget-specific."
+  }
+
+  Write-SessionState `
+    -RequestedLinkId "widget-selftest-runtime-a" `
+    -RequestedSessionId "selftest-session" `
+    -RequestedSessionLabel "SelfTest session" `
+    -RequestedCurrentFlow "Brainstorming" `
+    -RequestedActiveSkill "" `
+    -RequestedStatus "SelfTest linked" `
+    -RequestedNextSkill "writing-plans" `
+    -RequestedRecommendedAction "SelfTest action" `
+    -RequestedRecommendedReason "SelfTest reason" | Out-Null
+
   $status = Get-ConnectionStatus
   if (-not $status.Mode) {
     throw "Connection status did not return a mode."
+  }
+  if ($status.Mode -ne "Linked" -or [string]$status.LinkRequest.linkId -ne "widget-selftest-runtime-a") {
+    throw "Runtime connection status did not return the active widget link."
   }
 
   "SelfTest passed"
@@ -696,8 +782,16 @@ function Start-Widget {
   $disconnectButton.Cursor = "Hand"
   $disconnectButton.Style = New-ButtonStyle -NormalBg "#12080B" -HoverBg "#1A0C10" -PressedBg "#220F14" -Border "#7F1D1D" -HoverBorder "#991B1B" -Foreground "#FCA5A5" -CornerRadius 5
   $disconnectButton.Add_Click({
+    if ($Script:ActiveLinkId) {
+      $paths = Get-WidgetRuntimePaths -RequestedLinkId $Script:ActiveLinkId
+      Remove-Item -LiteralPath $paths.statePath -ErrorAction SilentlyContinue
+      Remove-Item -LiteralPath $paths.linkRequestPath -ErrorAction SilentlyContinue
+      $registryPath = Get-WidgetRegistryPath -RequestedLinkId $Script:ActiveLinkId
+      Remove-Item -LiteralPath $registryPath -ErrorAction SilentlyContinue
+    }
     Remove-Item -LiteralPath $Script:StatePath -ErrorAction SilentlyContinue
     Remove-Item -LiteralPath $Script:LinkRequestPath -ErrorAction SilentlyContinue
+    $Script:ActiveLinkId = $null
     $activeFlowState.Value = ""
     Update-GuideButtonStates
     $statusTitle.Text = "⌁ 안내 모드"
