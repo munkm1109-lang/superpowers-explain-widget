@@ -91,7 +91,29 @@ function New-WidgetLinkId {
 function Get-WidgetConnectPrompt {
   param([Parameter(Mandatory = $true)][string]$RequestedLinkId)
   $registryPath = "%LOCALAPPDATA%\SuperpowersExplainWidget\links\$RequestedLinkId.json"
-  return "Superpowers 위젯에 연결해줘: $RequestedLinkId. 같은 Windows 사용자라면 $registryPath 를 읽고, 그 안의 statePath/linkRequestPath에 연결 상태를 써줘. 이 파일을 못 찾으면 connectCommand나 superpowers-widget.ps1 -ConnectSession -LinkId $RequestedLinkId 를 실행해줘."
+  return "Superpowers 위젯에 연결해줘: $RequestedLinkId. 같은 Windows 사용자라면 $registryPath 를 읽고, 그 안의 statePath/linkRequestPath에 stateTemplate 형식으로 연결 상태를 써줘. 최소한 linkId와 updatedAt 또는 connectedAt은 반드시 포함해줘. 이 파일을 못 찾으면 connectCommand나 superpowers-widget.ps1 -ConnectSession -LinkId $RequestedLinkId 를 실행해줘."
+}
+
+function New-StateTemplate {
+  param(
+    [Parameter(Mandatory = $true)][string]$RequestedLinkId,
+    [string]$WorkspacePath = "<workspace path>"
+  )
+
+  return [ordered]@{
+    linkId = $RequestedLinkId
+    sessionId = "<codex-session-id>"
+    sessionLabel = "<Codex session label>"
+    workspacePath = $WorkspacePath
+    currentFlow = "Brainstorming"
+    activeSkill = ""
+    status = "Codex 세션과 연결됨"
+    nextSkill = "writing-plans"
+    recommendedAction = "현재 상황과 목표를 정리하고 다음 Superpowers flow를 고릅니다."
+    recommendedReason = "위젯이 현재 Codex 세션의 전체 작업 흐름과 다음 행동을 표시할 수 있어야 하기 때문입니다."
+    updatedAt = "<current ISO timestamp>"
+    expiresAt = "<current ISO timestamp + 6 hours>"
+  }
 }
 
 function Write-LinkRequest {
@@ -122,6 +144,9 @@ function Write-LinkRequest {
     linkRequestPath = $runtimePaths.linkRequestPath
     scriptPath = $Script:ScriptPath
     connectCommand = "powershell.exe -NoProfile -ExecutionPolicy Bypass -File `"$Script:ScriptPath`" -ConnectSession -LinkId $requestLinkId"
+    minimumStateFields = @("linkId", "updatedAt 또는 connectedAt")
+    recommendedStateFields = @("currentFlow", "status", "nextSkill", "recommendedAction", "recommendedReason", "expiresAt")
+    stateTemplate = New-StateTemplate -RequestedLinkId $requestLinkId -WorkspacePath "<workspace path>"
     connectPrompt = $connectPrompt
     instruction = "Codex 세션에 `"$connectPrompt`" 전체 문장을 알려주세요. 자동 연결이 안 되면 connectCommand를 실행하세요."
   }
@@ -232,6 +257,9 @@ function Write-SessionState {
     linkRequestPath = $targetLinkRequestPath
     scriptPath = $targetScriptPath
     connectCommand = "powershell.exe -NoProfile -ExecutionPolicy Bypass -File `"$targetScriptPath`" -ConnectSession -LinkId $RequestedLinkId"
+    minimumStateFields = @("linkId", "updatedAt 또는 connectedAt")
+    recommendedStateFields = @("currentFlow", "status", "nextSkill", "recommendedAction", "recommendedReason", "expiresAt")
+    stateTemplate = New-StateTemplate -RequestedLinkId $RequestedLinkId -WorkspacePath "<workspace path>"
     connectPrompt = $connectPrompt
     instruction = "Codex 세션에 `"$connectPrompt`" 전체 문장을 알려주세요. 자동 연결이 안 되면 connectCommand를 실행하세요."
   }
@@ -296,11 +324,12 @@ function Get-LatestLinkRequest {
 function Test-IsFreshState {
   param([Parameter(Mandatory = $true)]$State)
 
-  if (-not $State.updatedAt) {
+  $timestamp = if ($State.updatedAt) { [string]$State.updatedAt } elseif ($State.connectedAt) { [string]$State.connectedAt } else { "" }
+  if ([string]::IsNullOrWhiteSpace($timestamp)) {
     return $false
   }
 
-  $updatedAt = [DateTimeOffset]::Parse([string]$State.updatedAt)
+  $updatedAt = [DateTimeOffset]::Parse($timestamp)
   $age = [DateTimeOffset]::Now - $updatedAt
   if ($age.TotalHours -gt 6) {
     return $false

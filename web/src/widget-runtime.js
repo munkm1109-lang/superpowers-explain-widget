@@ -23,7 +23,7 @@ export function createWidgetRuntime({ projectRoot = getProjectRoot(), linkId = n
 }
 
 export function getConnectPrompt(request) {
-  return `Superpowers 위젯에 연결해줘: ${request.linkId}. 같은 사용자라면 ${request.registryPath} 를 읽고, 그 안의 statePath/linkRequestPath에 연결 상태를 써줘. 이 파일을 못 찾으면 connectCommand를 실행해줘.`;
+  return `Superpowers 위젯에 연결해줘: ${request.linkId}. 같은 사용자라면 ${request.registryPath} 를 읽고, 그 안의 statePath/linkRequestPath에 stateTemplate 형식으로 연결 상태를 써줘. 최소한 linkId와 updatedAt 또는 connectedAt은 반드시 포함해줘. 이 파일을 못 찾으면 connectCommand를 실행해줘.`;
 }
 
 export async function createLinkRequest(runtime) {
@@ -37,7 +37,24 @@ export async function createLinkRequest(runtime) {
     statePath: runtime.paths.statePath,
     linkRequestPath: runtime.paths.linkRequestPath,
     registryPath: runtime.registryPath,
-    connectCommand: `npm --prefix web start -- --link-id ${runtime.linkId}`,
+    connectCommand: `npm --prefix web run connect -- --link-id ${runtime.linkId}`,
+    fallbackStartCommand: `npm --prefix web start -- --link-id ${runtime.linkId}`,
+    minimumStateFields: ["linkId", "updatedAt 또는 connectedAt"],
+    recommendedStateFields: ["currentFlow", "status", "nextSkill", "recommendedAction", "recommendedReason", "expiresAt"],
+    stateTemplate: {
+      linkId: runtime.linkId,
+      sessionId: "<codex-session-id>",
+      sessionLabel: "<Codex session label>",
+      workspacePath: "<workspace path>",
+      currentFlow: "Brainstorming",
+      activeSkill: "",
+      status: "Codex 세션과 연결됨",
+      nextSkill: "writing-plans",
+      recommendedAction: "현재 상황과 목표를 정리하고 다음 Superpowers flow를 고릅니다.",
+      recommendedReason: "위젯이 현재 Codex 세션의 전체 작업 흐름과 다음 행동을 표시할 수 있어야 하기 때문입니다.",
+      updatedAt: "<current ISO timestamp>",
+      expiresAt: "<current ISO timestamp + 6 hours>"
+    },
     connectPrompt: ""
   };
   request.connectPrompt = getConnectPrompt(request);
@@ -45,6 +62,20 @@ export async function createLinkRequest(runtime) {
   await writeJsonFile(runtime.paths.linkRequestPath, request);
   await writeJsonFile(runtime.registryPath, request);
   return request;
+}
+
+function normalizeState(state) {
+  if (!state || typeof state !== "object") {
+    return state;
+  }
+  const normalized = { ...state };
+  if (!normalized.updatedAt && normalized.connectedAt) {
+    normalized.updatedAt = normalized.connectedAt;
+  }
+  if (normalized.currentFlow == null) {
+    normalized.currentFlow = "";
+  }
+  return normalized;
 }
 
 function isFreshState(state) {
@@ -70,7 +101,7 @@ function isFreshState(state) {
 
 export async function getStatus(runtime) {
   const linkRequest = await readJsonFile(runtime.paths.linkRequestPath);
-  const state = await readJsonFile(runtime.paths.statePath);
+  const state = normalizeState(await readJsonFile(runtime.paths.statePath));
   if (!linkRequest) {
     return {
       Mode: "Guide",
@@ -91,6 +122,15 @@ export async function getStatus(runtime) {
   }
   const sameLink = String(state.linkId) === String(linkRequest.linkId);
   if (sameLink && isFreshState(state)) {
+    if (!state.currentFlow) {
+      return {
+        Mode: "LinkedPartial",
+        Title: "연결됨",
+        Message: "Codex 세션과 연결됐고, Flow 정보 입력을 기다리는 중입니다.",
+        State: state,
+        LinkRequest: linkRequest
+      };
+    }
     return {
       Mode: "Linked",
       Title: "연결됨",
