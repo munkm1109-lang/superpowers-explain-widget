@@ -8,6 +8,7 @@ import { getProjectRoot } from "./src/paths.js";
 import { createSentryHooks } from "./src/sentry.js";
 
 const publicDir = path.join(path.dirname(fileURLToPath(import.meta.url)), "public");
+const serverVersion = "0.1.1";
 
 function jsonResponse(response, status, body) {
   response.writeHead(status, { "content-type": "application/json; charset=utf-8" });
@@ -75,6 +76,7 @@ export async function startServer({ projectRoot = getProjectRoot(), port = 43821
   }
   return {
     port: actualPort,
+    version: serverVersion,
     runtime,
     close: () => new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()))
   };
@@ -86,5 +88,6 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const linkId = linkArgIndex >= 0 ? process.argv[linkArgIndex + 1] : undefined;
   const port = portArgIndex >= 0 ? Number(process.argv[portArgIndex + 1]) : 43821;
   const server = await startServer({ linkId, port, openBrowser: true });
-  console.log(`Superpowers web widget running at http://127.0.0.1:${server.port}`);
+  console.log(`Superpowers web widget v${server.version} running at http://127.0.0.1:${server.port}`);
+  console.log("After updating this repository, close this server window and start the web widget again.");
 }

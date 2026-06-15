@@ -42,6 +42,16 @@ test("GET /api/health returns ok", async () => {
   });
 });
 
+test("startServer exposes the running server version", async () => {
+  const root = await makeRoot();
+  const server = await startServer({ projectRoot: root, port: 0, linkId: "widget-version-test", openBrowser: false });
+  try {
+    assert.equal(server.version, "0.1.1");
+  } finally {
+    await server.close();
+  }
+});
+
 test("GET /api/guide returns guide data", async () => {
   await withServer(async ({ baseUrl }) => {
     const response = await fetch(`${baseUrl}/api/guide`);
