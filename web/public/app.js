@@ -55,9 +55,9 @@ function renderStatus() {
   elements.connectDetail.textContent = status?.Message || "Codex 세션 연결 요청을 만들 수 있습니다.";
   setCopyPrompt(status?.LinkRequest);
 
-  if (status?.Mode === "Linked") {
+  if (status?.Mode === "Linked" || status?.Mode === "LinkedPartial") {
     elements.flowStatus.classList.remove("hidden");
-    elements.currentFlow.textContent = `Flow: ${status.State.currentFlow || "-"}`;
+    elements.currentFlow.textContent = `Flow: ${status.State.currentFlow || "Flow 정보 대기 중"}`;
     elements.nextFlow.textContent = `Next: ${status.State.nextSkill || "-"}`;
   } else {
     elements.flowStatus.classList.add("hidden");
@@ -65,7 +65,7 @@ function renderStatus() {
 }
 
 function getActiveFlowKey() {
-  return state.status?.Mode === "Linked" ? flowKey(state.status.State?.currentFlow) : "";
+  return state.status?.Mode === "Linked" || state.status?.Mode === "LinkedPartial" ? flowKey(state.status.State?.currentFlow) : "";
 }
 
 function renderFlowList() {
@@ -94,7 +94,7 @@ function row(label, value, className = "") {
 function renderDetail() {
   const item = state.guide[state.selectedIndex];
   if (!item) return;
-  const active = state.status?.Mode === "Linked" && flowKey(state.status.State?.currentFlow) === flowKey(item.flow);
+  const active = (state.status?.Mode === "Linked" || state.status?.Mode === "LinkedPartial") && flowKey(state.status.State?.currentFlow) === flowKey(item.flow);
   const action = active ? state.status.State?.recommendedAction || item.nowAction : item.nowAction;
   const reason = active ? state.status.State?.recommendedReason || item.reason : item.reason;
   const actionChanged = active && state.previousAction && state.previousAction !== action;

@@ -64,6 +64,36 @@ test("getStatus returns Linked with matching fresh state", async () => {
   assert.equal(status.State.currentFlow, "Brainstorming");
 });
 
+test("getStatus accepts minimal connectedAt-only connection state", async () => {
+  const root = await makeRoot();
+  const runtime = createWidgetRuntime({ projectRoot: root, linkId: "widget-web-minimal", registryRoot: path.join(root, "registry") });
+  await createLinkRequest(runtime);
+  const now = new Date();
+  await writeJsonFile(runtime.paths.statePath, {
+    linkId: "widget-web-minimal",
+    connected: true,
+    connectedAt: now.toISOString(),
+    message: "Codex connected to Superpowers Explain Widget link request."
+  });
+  const status = await getStatus(runtime);
+  assert.equal(status.Mode, "LinkedPartial");
+  assert.equal(status.State.updatedAt, now.toISOString());
+  assert.equal(status.State.currentFlow, "");
+});
+
+test("getStatus keeps mismatched connectedAt-only state stale", async () => {
+  const root = await makeRoot();
+  const runtime = createWidgetRuntime({ projectRoot: root, linkId: "widget-web-mismatch", registryRoot: path.join(root, "registry") });
+  await createLinkRequest(runtime);
+  await writeJsonFile(runtime.paths.statePath, {
+    linkId: "other-widget",
+    connected: true,
+    connectedAt: new Date().toISOString()
+  });
+  const status = await getStatus(runtime);
+  assert.equal(status.Mode, "Stale");
+});
+
 test("getStatus returns Stale for expired state", async () => {
   const root = await makeRoot();
   const runtime = createWidgetRuntime({ projectRoot: root, linkId: "widget-web-4", registryRoot: path.join(root, "registry") });
