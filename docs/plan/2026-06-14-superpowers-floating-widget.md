@@ -1,5 +1,7 @@
 # Superpowers Floating Widget Implementation Plan
 
+> Current status note: this is the first Windows-widget implementation plan. The current shipped runtime contract is widget ID-specific: `.superpowers-widget/runtime/links/<widget-id>.json` and `.superpowers-widget/runtime/states/<widget-id>.json`. Legacy `.superpowers-widget/link-request.json` and `.superpowers-widget/state.json` are compatibility mirrors only. Use `docs/plan/2026-06-15-web-widget-implementation.md` and `README.md` for current install and runtime behavior.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Build a lightweight Windows floating widget launched by `.bat` that explains Superpowers flows and shows a user-requested Codex session link state.

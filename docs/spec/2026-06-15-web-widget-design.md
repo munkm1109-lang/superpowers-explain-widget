@@ -295,7 +295,7 @@ Minimum verification for implementation:
 
 ## Open Decisions Resolved
 
-- Repository: same repository, `codex/web-widget` branch.
+- Repository: same repository. Development happened on `codex/web-widget`; after merge, public users should install from `main`.
 - Runtime: Node.js local server.
 - Scope: feature parity with current Windows widget for MVP.
 - Static guide: shared `.superpowers-widget/flow-guide.json`.

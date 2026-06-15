@@ -1,5 +1,7 @@
 # Superpowers Floating Widget Design
 
+> Current status note: this is the original Windows-widget design document. The shipped implementation now uses widget ID-specific runtime files under `.superpowers-widget/runtime/links/` and `.superpowers-widget/runtime/states/`. Legacy `.superpowers-widget/link-request.json` and `.superpowers-widget/state.json` may still be mirrored for compatibility, but they are no longer the primary runtime contract. See `docs/spec/2026-06-15-web-widget-design.md` and `README.md` for the current behavior.
+
 ## Purpose
 
 Build a lightweight Windows floating widget that helps a non-developer understand and follow the Superpowers workflow while working with Codex.
