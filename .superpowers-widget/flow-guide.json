@@ -1,0 +1,68 @@
+﻿{
+  "items": [
+    {
+      "flow": "Brainstorming",
+      "situation": "뭘 해야 할지 모를 때",
+      "previousPlugin": "없음",
+      "nowAction": "현재 상황과 목표를 한 문장으로 정리하고, 어떤 Superpowers flow로 넘어갈지 고릅니다.",
+      "reason": "상황과 목표를 먼저 말로 정리해야 다음 행동을 고를 수 있기 때문입니다.",
+      "nextPlugin": "writing-plans 또는 상황에 맞는 다음 Superpowers flow"
+    },
+    {
+      "flow": "Brainstorming",
+      "situation": "새 기능 또는 UI 요청",
+      "previousPlugin": "없음",
+      "nowAction": "요구사항, 성공 기준, 제약을 정리하고 구현 전에 짧은 설계를 확정합니다.",
+      "reason": "요청을 바로 구현하기보다 의도, 범위, 성공 기준을 먼저 분리해야 합니다.",
+      "nextPlugin": "writing-plans"
+    },
+    {
+      "flow": "Writing Plans",
+      "situation": "설계가 승인됐을 때",
+      "previousPlugin": "brainstorming 또는 요구사항 정리",
+      "nowAction": "승인된 설계를 작은 작업 순서, 수정 파일, 검증 명령으로 나눕니다.",
+      "reason": "합의된 방향을 작업 순서와 검증 기준으로 바꿔야 구현 중 흔들리지 않습니다.",
+      "nextPlugin": "executing-plans"
+    },
+    {
+      "flow": "Executing Plans",
+      "situation": "계획대로 직접 구현할 때",
+      "previousPlugin": "writing-plans",
+      "nowAction": "계획의 다음 체크 항목을 구현하고, 끝날 때마다 검증 결과를 확인합니다.",
+      "reason": "이미 정해진 계획이 있으므로 새 판단보다 안전한 실행과 진행 추적이 중요합니다.",
+      "nextPlugin": "test-driven-development 또는 requesting-code-review"
+    },
+    {
+      "flow": "Test-Driven Development",
+      "situation": "동작이 진짜 되는지 증명해야 할 때",
+      "previousPlugin": "writing-plans 또는 executing-plans",
+      "nowAction": "기대 동작을 테스트로 먼저 고정하고, 실패를 확인한 뒤 통과하도록 구현합니다.",
+      "reason": "기대 동작을 테스트로 고정하면 눈으로 확인하기 어려운 실패를 빨리 찾을 수 있습니다.",
+      "nextPlugin": "executing-plans 또는 requesting-code-review"
+    },
+    {
+      "flow": "Systematic Debugging",
+      "situation": "버그를 조사할 때",
+      "previousPlugin": "재현 정보 또는 실패 로그",
+      "nowAction": "재현 조건과 실패 증거를 모으고, 원인 후보를 하나씩 좁힙니다.",
+      "reason": "추측으로 고치면 원인을 놓치기 쉬우므로 증거를 모아 범위를 좁혀야 합니다.",
+      "nextPlugin": "test-driven-development 또는 executing-plans"
+    },
+    {
+      "flow": "Requesting Code Review",
+      "situation": "코드 리뷰가 필요할 때",
+      "previousPlugin": "executing-plans 또는 test-driven-development",
+      "nowAction": "변경사항, 검증 결과, 남은 위험을 정리하고 리뷰 관점으로 결함을 찾습니다.",
+      "reason": "구현한 변경이 의도와 품질 기준에 맞는지 다른 관점으로 확인해야 합니다.",
+      "nextPlugin": "finishing-a-development-branch"
+    },
+    {
+      "flow": "Finishing a Development Branch",
+      "situation": "브랜치를 마무리할 때",
+      "previousPlugin": "requesting-code-review",
+      "nowAction": "최종 검증을 돌리고, 커밋/PR/보류 등 작업 마무리 방식을 정리합니다.",
+      "reason": "작업 종료 전 테스트, 문서, 커밋 상태를 정리해야 안전하게 넘길 수 있습니다.",
+      "nextPlugin": "없음 또는 다음 요청에 맞는 flow"
+    }
+  ]
+}

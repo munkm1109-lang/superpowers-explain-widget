@@ -1,0 +1,17 @@
+﻿{
+  "linkId": "widget-example-link",
+  "sessionId": "manual-example-session",
+  "sessionLabel": "Example Codex session",
+  "workspacePath": "C:\\Users\\<사용자>\\Documents\\New project",
+  "currentFlow": "requesting-code-review",
+  "activeSkill": "verification",
+  "status": "코드 리뷰 수정과 확인이 끝난 상태",
+  "nextSkill": "finishing-a-development-branch",
+  "recommendedAction": "Finishing a Development Branch로 넘어가서 최종 상태를 정리합니다.",
+  "recommendedReason": "리뷰 수정과 확인이 끝났다면 작업을 열어둔 채 멈추기보다 최종 검증, 커밋 상태, 남은 위험을 정리해야 안전하게 마무리할 수 있습니다.",
+  "blockedActions": [
+    "보조 skill 호출만으로 전체 currentFlow를 바꾸지 않습니다."
+  ],
+  "updatedAt": "2026-06-14T00:00:00+09:00",
+  "expiresAt": "2099-12-31T23:59:59+09:00"
+}
